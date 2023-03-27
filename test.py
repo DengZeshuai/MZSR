@@ -4,7 +4,7 @@ import imageio
 from utils import *
 
 class Test(object):
-    def __init__(self, model_path, save_path,kernel, scale, conf, method_num, num_of_adaptation):
+    def __init__(self, model_path, save_path, kernel, scale, conf, method_num, num_of_adaptation):
         methods=['direct', 'direct', 'bicubic', 'direct']
         self.save_results=True
         self.max_iters=num_of_adaptation
@@ -27,6 +27,9 @@ class Test(object):
         self.scale_factors = [self.scale, self.scale]
 
         self.build_network(conf)
+    
+    def set_kernel(self, kernel):
+        self.kernel = kernel
 
     def build_network(self, conf):
         tf.reset_default_graph()
@@ -87,7 +90,13 @@ class Test(object):
         self.quick_test()
 
         print('[*] Baseline ')
-        self.train()
+        train_round = 1
+        t1=time.time()
+        for _ in range(train_round):
+            self.train()
+        t2=time.time()
+        print('~~~~~~ Train: {%.2f} seconds ~~~~~~~' % ((t2 - t1)/train_round))
+        
 
         post_processed_output = self.final_test()
 
@@ -212,14 +221,20 @@ class Test(object):
         return processed_output
 
     def final_test(self):
+        print("~~~~ Final Test Begin ~~~")
+        t1=time.time()
+        forward_round = 1
+        for _ in range(forward_round):
+            output = self.forward_pass(self.img, self.gt.shape)
+            if self.back_projection == True:
+                for bp_iter in range(self.back_projection_iters):
+                    output = back_projection(output, self.img, down_kernel=self.kernel,
+                                                    up_kernel=self.upscale_method, sf=self.scale, ds_method=self.ds_method)
 
-        output = self.forward_pass(self.img, self.gt.shape)
-        if self.back_projection == True:
-            for bp_iter in range(self.back_projection_iters):
-                output = back_projection(output, self.img, down_kernel=self.kernel,
-                                                  up_kernel=self.upscale_method, sf=self.scale, ds_method=self.ds_method)
+            processed_output=np.round(np.clip(output*255, 0., 255.)).astype(np.uint8)
 
-        processed_output=np.round(np.clip(output*255, 0., 255.)).astype(np.uint8)
+        t2 = time.time()
+        print('~~~~~~ Final Test: {%.2f} seconds ~~~~~~~' % ((t2 - t1)/forward_round))
 
         '''Shave'''
         scale=int(self.scale)

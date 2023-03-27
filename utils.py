@@ -10,6 +10,7 @@ from time import strftime, localtime
 
 def imread(path):
     img=imageio.imread(path).astype(np.float32)
+    if img.shape[2] > 3: img = img[:, :, :3]
     img=img/255.
     return img
 

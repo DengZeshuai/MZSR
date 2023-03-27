@@ -39,19 +39,28 @@ def main():
 
         img_path=sorted(glob.glob(os.path.join(args.inputpath, '*.png')))
         gt_path=sorted(glob.glob(os.path.join(args.gtpath, '*.png')))
-
         scale=2.0
-
-        try:
-            kernel=scipy.io.loadmat(args.kernelpath)['kernel']
-        except:
+        
+        if os.path.isdir(args.kernelpath):
+            kernel_path = sorted(glob.glob(os.path.join(args.kernelpath, '*', '*.mat')))
             kernel='cubic'
+        else:
+            try:
+                kernel=scipy.io.loadmat(args.kernelpath)['kernel']
+            except:
+                kernel='cubic'
+                print("default kernel: cubic")
 
         Tester=test.Test(model_path, args.savepath, kernel, scale, conf, args.model, args.num_of_adaptation)
         P=[]
         for i in range(len(img_path)):
             img=imread(img_path[i])
             gt=imread(gt_path[i])
+
+            if os.path.isdir(args.kernelpath):
+                print("Load kernel: {}".format(os.path.basename(kernel_path[i])))
+                kernel = scipy.io.loadmat(kernel_path[i])['Kernel'] #
+                Tester.set_kernel(kernel)
 
             _, pp =Tester(img, gt, img_path[i])
 
